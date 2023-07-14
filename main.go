@@ -1,25 +1,30 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 
 	"github.com/bwmarrin/discordgo"
-	"github.com/joho/godotenv"
 )
 
-func main() {
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatal("failed to load env", err)
-	}
+var (
+	Token string
+	Url   string
+)
 
-	dg, err := discordgo.New("Bot " + os.Getenv("DISCORD_TOKEN"))
+func init() {
+	flag.StringVar(&Token, "t", "", "Discord Bot Token")
+	flag.StringVar(&Url, "u", "", "IP API Url")
+	flag.Parse()
+}
+
+func main() {
+	dg, err := discordgo.New("Bot " + Token)
 	if err != nil {
 		fmt.Println("error creating Discord session,", err)
 		return
@@ -60,7 +65,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 	}
 
 	msg := "error getting IP address"
-	resp, err := http.Get(os.Getenv("IP_PROVIDER_URL"))
+	resp, err := http.Get(Url)
 	if err != nil {
 		s.ChannelMessageSend(m.ChannelID, msg)
 		return
