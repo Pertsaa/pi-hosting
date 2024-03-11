@@ -64,6 +64,17 @@ func RegisterCommands(s *discordgo.Session) ([]*discordgo.ApplicationCommand, er
 
 func statusCommandHandler(s *discordgo.Session, i *discordgo.InteractionCreate, c *config.Config) {
 	msg := ""
+
+	ip, err := util.GetPublicIPAddress(c)
+	if err != nil {
+		msg = "Public IP: Error\n"
+	} else {
+		msg = fmt.Sprintf(
+			"Public IP: %s\n",
+			ip,
+		)
+	}
+
 	for _, service := range c.Services {
 		status, err := util.CheckServiceStatus(service)
 		if err != nil {
