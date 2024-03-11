@@ -3,6 +3,7 @@ package command
 import (
 	"fmt"
 	"pi-hosting/internal/config"
+	"pi-hosting/internal/util"
 
 	"github.com/bwmarrin/discordgo"
 )
@@ -62,82 +63,101 @@ func RegisterCommands(s *discordgo.Session) ([]*discordgo.ApplicationCommand, er
 }
 
 func statusCommandHandler(s *discordgo.Session, i *discordgo.InteractionCreate, c *config.Config) {
+	msg := ""
+	for _, service := range c.Services {
+		status, err := util.CheckServiceStatus(service)
+		if err != nil {
+			status = "Error"
+		}
+		msg += fmt.Sprintf(
+			"Service: %s\nStatus: %s\n",
+			service,
+			status,
+		)
+	}
+
 	s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
 		Data: &discordgo.InteractionResponseData{
-			Content: "Hey there! Congratulations, you just executed your first slash command",
+			Content: msg,
 		},
 	})
 }
 
 func startCommandHandler(s *discordgo.Session, i *discordgo.InteractionCreate, c *config.Config) {
-	// Access options in the order provided by the user.
 	options := i.ApplicationCommandData().Options
 
-	// Or convert the slice into a map
-	optionMap := make(map[string]*discordgo.ApplicationCommandInteractionDataOption, len(options))
-	for _, opt := range options {
-		optionMap[opt.Name] = opt
+	service := options[0].StringValue()
+
+	found := false
+	msg := "Service not found"
+
+	for s := range c.Services {
+		if c.Services[s] == service {
+			found = true
+		}
 	}
 
-	// This example stores the provided arguments in an []interface{}
-	// which will be used to format the bot's response
-	margs := make([]interface{}, 0, len(options))
-	msgformat := "You learned how to use command options! " +
-		"Take a look at the value(s) you entered:\n"
-
-	// Get the value from the option map.
-	// When the option exists, ok = true
-	if option, ok := optionMap["string-option"]; ok {
-		// Option values must be type asserted from interface{}.
-		// Discordgo provides utility functions to make this simple.
-		margs = append(margs, option.StringValue())
-		msgformat += "> string-option: %s\n"
+	if found {
+		_, err := util.StartService(service)
+		if err != nil {
+			msg = fmt.Sprintf(
+				"Error starting service: %s",
+				service,
+			)
+		} else {
+			msg = fmt.Sprintf(
+				"Starting service: %s",
+				service,
+			)
+		}
+	} else {
+		msg = "Service not found"
 	}
+
 	s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-		// Ignore type for now, they will be discussed in "responses"
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
 		Data: &discordgo.InteractionResponseData{
-			Content: fmt.Sprintf(
-				msgformat,
-				margs...,
-			),
+			Content: msg,
 		},
 	})
 }
 
 func stopCommandHandler(s *discordgo.Session, i *discordgo.InteractionCreate, c *config.Config) {
-	// Access options in the order provided by the user.
 	options := i.ApplicationCommandData().Options
 
-	// Or convert the slice into a map
-	optionMap := make(map[string]*discordgo.ApplicationCommandInteractionDataOption, len(options))
-	for _, opt := range options {
-		optionMap[opt.Name] = opt
+	service := options[0].StringValue()
+
+	found := false
+	msg := "Service not found"
+
+	for s := range c.Services {
+		if c.Services[s] == service {
+			found = true
+		}
 	}
 
-	// This example stores the provided arguments in an []interface{}
-	// which will be used to format the bot's response
-	margs := make([]interface{}, 0, len(options))
-	msgformat := "You learned how to use command options! " +
-		"Take a look at the value(s) you entered:\n"
-
-	// Get the value from the option map.
-	// When the option exists, ok = true
-	if option, ok := optionMap["string-option"]; ok {
-		// Option values must be type asserted from interface{}.
-		// Discordgo provides utility functions to make this simple.
-		margs = append(margs, option.StringValue())
-		msgformat += "> string-option: %s\n"
+	if found {
+		_, err := util.StopService(service)
+		if err != nil {
+			msg = fmt.Sprintf(
+				"Error stopping service: %s",
+				service,
+			)
+		} else {
+			msg = fmt.Sprintf(
+				"Stopping service: %s",
+				service,
+			)
+		}
+	} else {
+		msg = "Service not found"
 	}
+
 	s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-		// Ignore type for now, they will be discussed in "responses"
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
 		Data: &discordgo.InteractionResponseData{
-			Content: fmt.Sprintf(
-				msgformat,
-				margs...,
-			),
+			Content: msg,
 		},
 	})
 }

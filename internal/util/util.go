@@ -5,7 +5,7 @@ import (
 	"io"
 	"net/http"
 	"os/exec"
-	"pi-hosting/config"
+	"pi-hosting/internal/config"
 )
 
 func GetPublicIPAddress(config *config.Config) (string, error) {
@@ -24,6 +24,26 @@ func GetPublicIPAddress(config *config.Config) (string, error) {
 
 func CheckServiceStatus(service string) (string, error) {
 	out, err := exec.Command("systemctl", "check", service).CombinedOutput()
+	if err != nil {
+		if _, ok := err.(*exec.ExitError); !ok {
+			return "", err
+		}
+	}
+	return string(out), nil
+}
+
+func StartService(service string) (string, error) {
+	out, err := exec.Command("systemctl", "start", service).CombinedOutput()
+	if err != nil {
+		if _, ok := err.(*exec.ExitError); !ok {
+			return "", err
+		}
+	}
+	return string(out), nil
+}
+
+func StopService(service string) (string, error) {
+	out, err := exec.Command("systemctl", "stop", service).CombinedOutput()
 	if err != nil {
 		if _, ok := err.(*exec.ExitError); !ok {
 			return "", err
