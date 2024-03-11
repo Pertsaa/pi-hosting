@@ -1,43 +1,38 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 
 	"github.com/bwmarrin/discordgo"
+	"gopkg.in/yaml.v2"
 )
-
-var (
-	Token string
-	Url   string
-)
-
-func init() {
-	flag.StringVar(&Token, "t", "", "Discord Bot Token")
-	flag.StringVar(&Url, "u", "", "IP API Url")
-	flag.Parse()
-}
 
 func main() {
-	dg, err := discordgo.New("Bot " + Token)
+	config, err := loadConfig()
 	if err != nil {
-		fmt.Println("error creating Discord session,", err)
-		return
+		log.Fatal("error loading config,", err)
+	}
+
+	dg, err := discordgo.New("Bot " + config.Token)
+	if err != nil {
+		log.Fatal("error creating Discord session,", err)
 	}
 
 	dg.Identify.Intents = discordgo.IntentsGuildMessages
 
-	dg.AddHandler(messageCreate)
+	dg.AddHandler(func(s *discordgo.Session, m *discordgo.MessageCreate) {
+		messageCreate(s, m, &config)
+	})
 
 	err = dg.Open()
 	if err != nil {
-		fmt.Println("error opening connection,", err)
-		return
+		log.Fatal("error opening connection,", err)
 	}
 
 	fmt.Println("Bot is now running. Press CTRL-C to exit.")
@@ -48,7 +43,7 @@ func main() {
 	dg.Close()
 }
 
-func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
+func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate, config *Config) {
 	if m.Author.ID == s.State.User.ID {
 		return
 	}
@@ -65,7 +60,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 	}
 
 	msg := "error getting IP address"
-	resp, err := http.Get(Url)
+	resp, err := http.Get(config.URL)
 	if err != nil {
 		s.ChannelMessageSend(m.ChannelID, msg)
 		return
@@ -80,4 +75,25 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 	msg = fmt.Sprintf("IP address: %s", string(ip))
 
 	s.ChannelMessageSend(m.ChannelID, msg)
+}
+
+type Config struct {
+	Token    string   `yaml:"token"`
+	URL      string   `yaml:"ip_url"`
+	Services []string `yaml:"services,flow"`
+}
+
+func loadConfig() (Config, error) {
+	configFile, err := os.ReadFile("config.yaml")
+	if err != nil {
+		return Config{}, err
+	}
+
+	config := Config{}
+	err = yaml.Unmarshal(configFile, &config)
+	if err != nil {
+		return Config{}, err
+	}
+
+	return config, nil
 }

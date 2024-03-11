@@ -1,0 +1,5 @@
+token: <Bot Token>
+ip_url: <Public IP URL>
+services:
+  - valheim.service
+  - minecraft.service
